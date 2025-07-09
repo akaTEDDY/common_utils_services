@@ -11,7 +11,6 @@ import 'package:fluttertoast/fluttertoast.dart';
 typedef PlengiListener = void Function(dynamic location);
 
 class LocationUtils {
-  static const platform = MethodChannel('plengi.ai/fromFlutter');
   // 위도 1도당 거리 (약 111km)
   static const double latDegreeToMeters = 111000.0;
   // 경도 1도당 거리 (위도에 따라 변하지만, 한국 기준으로 약 88.8km)
@@ -134,17 +133,6 @@ class LocationUtils {
     return degree * pi / 180;
   }
 
-  // 현재 위치 가져오기
-  static Future<String?> getCurrentLocation() async {
-    try {
-      final String? location = await platform.invokeMethod('searchPlace');
-      return location;
-    } on PlatformException catch (e) {
-      print('위치 정보 가져오기 실패: ${e.message}');
-      return null;
-    }
-  }
-
   static bool isLocationSignificant(
     Map<String, dynamic> currentLocation,
     Map<String, dynamic> lastLocation,
@@ -196,6 +184,7 @@ class LocationUtils {
 
 // 위치 히스토리 관리 클래스
 class LocationHistoryManager {
+  static const platform = MethodChannel('plengi.ai/fromFlutter');
   late Box<LocationHistory> locationHistoryBox;
   late StreamSubscription? _subscription;
   PlengiListener? _listener;
@@ -203,6 +192,7 @@ class LocationHistoryManager {
 
   Future<void> initialize(
     int maxLocationHistory,
+    int? handle,
     PlengiListener? plengiListener,
   ) async {
     try {
@@ -233,8 +223,21 @@ class LocationHistoryManager {
       locationHistoryBox = await Hive.openBox<LocationHistory>(
         'locationHistory',
       );
+
+      await platform.invokeMethod('saveCallbackHandle', {'handle': handle});
     } catch (e) {
       print('위치 매니저 초기화 실패: $e');
+    }
+  }
+
+  // 현재 위치 가져오기
+  static Future<String?> getCurrentLocation() async {
+    try {
+      final String? location = await platform.invokeMethod('searchPlace');
+      return location;
+    } on PlatformException catch (e) {
+      print('위치 정보 가져오기 실패: ${e.message}');
+      return null;
     }
   }
 
